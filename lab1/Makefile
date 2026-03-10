@@ -1,6 +1,6 @@
-CC = gcc
+CC = g++
 CFLAGS = -Wall
-LDFLAGS = -lstdc++
+LDFLAGS = 
 TARGET = main
 SRC = main.cpp
 
