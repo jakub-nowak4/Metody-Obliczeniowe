@@ -2,19 +2,17 @@
 #include <fstream>
 #include <cmath>
 #include <string>
-#include <vector>
 #include <iomanip>
 using namespace std;
 
-void wczytaj_dane(const string& nazwa_pliku, vector<long double>& log10x_vec, vector<long double>& x_vec, vector<long double>& fx_dokl_vec);
 long double oblicz_fx(long double x);
 long double oblicz_fx_taylor(long double x);
 long double oblicz_blad_wzgledny(long double fx_dokl, long double fx_obliczone);
-void zapisz_dane(const string& nazwa_pliku, vector<long double>& log10x_vec, vector<long double>& log10_bledy_wzgledne_vec);
 void metoda_podstawowa();
 void metoda_ulepszona();
 
-int main() {
+int main()
+{
     metoda_podstawowa();
     metoda_ulepszona();
     return 0;
@@ -22,94 +20,128 @@ int main() {
 
 void metoda_podstawowa()
 {
-    vector<long double> log10x_vec, x_vec, fx_dokl_vec;
-    vector<long double> log10_bledy_vec;
-
-    wczytaj_dane("dane_do_laboratorium_2.txt", log10x_vec, x_vec, fx_dokl_vec);
-    cout << "=== Metoda podstawowa ===" << endl;
-    cout << "Wczytano " << x_vec.size() << " punktow danych." << endl;
-
-    for(size_t i = 0; i < x_vec.size(); i++)
+    ifstream plik_we("dane_do_laboratorium_2.txt");
+    if (!plik_we.is_open())
     {
-        long double fx_obliczone = oblicz_fx(x_vec[i]);
-        long double blad = oblicz_blad_wzgledny(fx_dokl_vec[i], fx_obliczone);
-
-        // log10(0) = -inf  psuje skale wykresu w gnuplot
-        // wiec blad == 0 tak naprawde losowe trafienie w poprawne zaokraglenie
-        if (blad == 0.0L)
-            log10_bledy_vec.push_back(-20.0L);
-        else
-            log10_bledy_vec.push_back(log10l(blad));
-
-        printf("x=%.20Lg   f_dokl=%.20Lg   f_obl=%.20Lg   blad=%.4Lg\n",
-               x_vec[i], fx_dokl_vec[i], fx_obliczone, blad);
+        cerr << "Nie mozna otworzyc pliku wejsciowego: dane_do_laboratorium_2.txt" << endl;
+        return;
     }
 
-    zapisz_dane("bledy_podstawowa.txt", log10x_vec, log10_bledy_vec);
-}
-
-void metoda_ulepszona()
-{
-    vector<long double> log10x_vec, x_vec, fx_dokl_vec;
-    vector<long double> log10_bledy_vec;
-
-    wczytaj_dane("dane_do_laboratorium_2.txt", log10x_vec, x_vec, fx_dokl_vec);
-    cout << "=== Metoda ulepszona - Taylor ===" << endl;
-    cout << "Wczytano " << x_vec.size() << " punktow danych." << endl;
-
-    for(size_t i = 0; i < x_vec.size(); i++)
+    ofstream plik_wy("bledy_podstawowa.txt");
+    if (!plik_wy.is_open())
     {
-        long double fx_obliczone;
-        if (fabsl(x_vec[i]) < 0.1L)
-            fx_obliczone = oblicz_fx_taylor(x_vec[i]);
-        else
-            fx_obliczone = oblicz_fx(x_vec[i]);
-
-        long double blad = oblicz_blad_wzgledny(fx_dokl_vec[i], fx_obliczone);
-
-        // log10(0) = -inf, co psuje skale wykresu w gnuplot
-        // wiec blad == 0 tutaj sa to poprawne wyniki dla bardzo malych x w metodzie taylor
-        if (blad == 0.0L)
-            log10_bledy_vec.push_back(-20.0L);
-        else
-            log10_bledy_vec.push_back(log10l(blad));
-
-        printf("x=%.20Lg   f_dokl=%.20Lg   f_obl=%.20Lg   blad=%.4Lg\n",
-               x_vec[i], fx_dokl_vec[i], fx_obliczone, blad);
+        cerr << "Nie mozna otworzyc pliku wyjsciowego: bledy_podstawowa.txt" << endl;
+        return;
     }
 
-    zapisz_dane("bledy_ulepszona.txt", log10x_vec, log10_bledy_vec);
-}
-
-void wczytaj_dane(const string& nazwa_pliku, vector<long double>& log10x_vec, vector<long double>& x_vec, vector<long double>& fx_dokl_vec)
-{
-    ifstream plik(nazwa_pliku);
-
-    if (!plik.is_open()) {
-        cerr << "Nie mozna otworzyc pliku: " << nazwa_pliku << endl;
+    ofstream plik_wynik("wynik_podstawowa.txt");
+    if (!plik_wynik.is_open())
+    {
+        cerr << "Nie mozna otworzyc pliku wyjsciowego: wynik_podstawowa.txt" << endl;
         return;
     }
 
     string linia_pomin;
-    for(int i = 0; i < 3; i++) {
-        getline(plik, linia_pomin);
+    for (int i = 0; i < 3; i++)
+    {
+        getline(plik_we, linia_pomin);
     }
+
+    plik_wy << "log10(x) log10(blad wzgledny)" << endl;
+    plik_wynik << "log10(x) x f_dokl f_obl blad_wzgledny" << endl;
+    cout << "=== Metoda podstawowa ===" << endl;
 
     long double log10x, x, fx_dokl;
+    while (plik_we >> log10x >> x >> fx_dokl)
+    {
+        long double fx_obliczone = oblicz_fx(x);
+        long double blad = oblicz_blad_wzgledny(fx_dokl, fx_obliczone);
 
-    while (plik >> log10x >> x >> fx_dokl) {
-        log10x_vec.push_back(log10x);
-        x_vec.push_back(x);
-        fx_dokl_vec.push_back(fx_dokl);
+        long double log10_blad;
+        if (blad == 0.0L)
+            log10_blad = -20.0L;
+        else
+            log10_blad = log10l(blad);
+
+        plik_wy << log10x << " " << log10_blad << endl;
+        plik_wynik << setprecision(20) << log10x << " " << x << " " << fx_dokl << " " << fx_obliczone << " " << setprecision(8) << blad << endl;
+
+        printf("x=%.20Lg   f_dokl=%.20Lg   f_obl=%.20Lg   blad=%.4Lg\n",
+               x, fx_dokl, fx_obliczone, blad);
     }
-    plik.close();
+
+    plik_we.close();
+    plik_wy.close();
+    plik_wynik.close();
+}
+
+void metoda_ulepszona()
+{
+    ifstream plik_we("dane_do_laboratorium_2.txt");
+    if (!plik_we.is_open())
+    {
+        cerr << "Nie mozna otworzyc pliku wejsciowego: dane_do_laboratorium_2.txt" << endl;
+        return;
+    }
+
+    ofstream plik_wy("bledy_ulepszona.txt");
+    if (!plik_wy.is_open())
+    {
+        cerr << "Nie mozna otworzyc pliku wyjsciowego: bledy_ulepszona.txt" << endl;
+        return;
+    }
+
+    ofstream plik_wynik("wynik_ulepszona.txt");
+    if (!plik_wynik.is_open())
+    {
+        cerr << "Nie mozna otworzyc pliku wyjsciowego: wynik_ulepszona.txt" << endl;
+        return;
+    }
+
+    string linia_pomin;
+    for (int i = 0; i < 3; i++)
+    {
+        getline(plik_we, linia_pomin);
+    }
+
+    plik_wy << "log10(x) log10(blad wzgledny)" << endl;
+    plik_wynik << "log10(x) x f_dokl f_obl blad_wzgledny" << endl;
+    cout << "=== Metoda ulepszona - Taylor ===" << endl;
+
+    long double log10x, x, fx_dokl;
+    while (plik_we >> log10x >> x >> fx_dokl)
+    {
+        long double fx_obliczone;
+        if (fabsl(x) < 0.1L)
+            fx_obliczone = oblicz_fx_taylor(x);
+        else
+            fx_obliczone = oblicz_fx(x);
+
+        long double blad = oblicz_blad_wzgledny(fx_dokl, fx_obliczone);
+
+        long double log10_blad;
+        if (blad == 0.0L)
+            log10_blad = -20.0L;
+        else
+            log10_blad = log10l(blad);
+
+        plik_wy << log10x << " " << log10_blad << endl;
+        plik_wynik << setprecision(20) << log10x << " " << x << " " << fx_dokl << " " << fx_obliczone << " " << setprecision(8) << blad << endl;
+
+        printf("x=%.20Lg   f_dokl=%.20Lg   f_obl=%.20Lg   blad=%.4Lg\n",
+               x, fx_dokl, fx_obliczone, blad);
+    }
+
+    plik_we.close();
+    plik_wy.close();
+    plik_wynik.close();
 }
 
 long double oblicz_fx(long double x)
 {
     long double licznik = x * x * x;
     long double odejmowanie = sinhl(x) - x;
-    long double mianownik = 6.0L * fabsl(odejmowanie);
+    long double mianownik = 6.0L * odejmowanie;
 
     return licznik / mianownik;
 }
@@ -121,10 +153,10 @@ long double oblicz_fx_taylor(long double x)
     long double x6 = x4 * x2;
     long double x8 = x6 * x2;
 
-    long double wyraz1 = x2 / 20.0L;       // x^2  / (5!/6)
-    long double wyraz2 = x4 / 840.0L;       // x^4  / (7!/6)
-    long double wyraz3 = x6 / 60480.0L;     // x^6  / (9!/6)
-    long double wyraz4 = x8 / 6652800.0L;   // x^8  / (11!/6)
+    long double wyraz1 = x2 / 20.0L;      // x^2  / (5!/6)
+    long double wyraz2 = x4 / 840.0L;     // x^4  / (7!/6)
+    long double wyraz3 = x6 / 60480.0L;   // x^6  / (9!/6)
+    long double wyraz4 = x8 / 6652800.0L; // x^8  / (11!/6)
 
     long double mianownik = 1.0L + wyraz1 + wyraz2 + wyraz3 + wyraz4;
 
@@ -137,19 +169,4 @@ long double oblicz_blad_wzgledny(long double fx_dokl, long double fx_obliczone)
     long double blad_bezwzgledny = fabsl(odejmowanie);
     long double mianownik = fabsl(fx_dokl);
     return blad_bezwzgledny / mianownik;
-}
-
-void zapisz_dane(const string& nazwa_pliku, vector<long double>& log10x_vec, vector<long double>& log10_bledy_wzgledne_vec)
-{
-    ofstream plik(nazwa_pliku);
-    if (!plik.is_open()) {
-        cerr << "Nie mozna otworzyc pliku: " << nazwa_pliku << endl;
-        return;
-    }
-
-    plik << "log10(x) log10(blad wzgledny)" << endl;
-    for(size_t i = 0; i < log10x_vec.size(); i++) {
-        plik << log10x_vec[i] << " " << log10_bledy_wzgledne_vec[i] << endl;
-    }
-    plik.close();
 }
