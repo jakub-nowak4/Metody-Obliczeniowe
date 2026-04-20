@@ -1,0 +1,18 @@
+CXX = g++
+CXXFLAGS = -Wall -Wextra -std=c++17 -O2
+
+TARGET = lab6
+SRC = lab6.cpp
+
+all: $(TARGET)
+
+$(TARGET): $(SRC)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SRC)
+
+clean:
+	rm -f $(TARGET)
+
+run: $(TARGET)
+	./$(TARGET)
+
+.PHONY: all clean run

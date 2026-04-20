@@ -7,7 +7,7 @@ using namespace std;
 #define TOLX 1e-11
 #define TOLY 1e-11
 
-#define MAX_ITER 1000
+#define MAX_ITER 20
 
 void metoda_newtona_uogolniona(double x0, double y0, double z0, double tolx, double tolf, int max_iter);
 
