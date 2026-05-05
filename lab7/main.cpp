@@ -24,10 +24,10 @@ double prawaStrona[ROZMIAR] = {140, 67, 62, 89, 153};
 
 double przyblizenieStartowe[ROZMIAR] = {6, 6, 6, 6, 6};
 
-// Oblicza norme L2 residuum: ||b - A*x||
+// Norma maksimum residuum: ||b - A*x||_inf  (bezwzgledna)
 double normaResiduum(double rozwiazanie[ROZMIAR])
 {
-    double suma = 0.0;
+    double max_residuum = 0.0;
     for (int wiersz = 0; wiersz < ROZMIAR; wiersz++)
     {
         double skladnik_residuum = prawaStrona[wiersz];
@@ -35,21 +35,23 @@ double normaResiduum(double rozwiazanie[ROZMIAR])
         {
             skladnik_residuum -= macierzA[wiersz][kolumna] * rozwiazanie[kolumna];
         }
-        suma += skladnik_residuum * skladnik_residuum;
+        if (abs(skladnik_residuum) > max_residuum) {
+            max_residuum = abs(skladnik_residuum);
+        }
     }
-    return sqrt(suma);
+    return max_residuum;
 }
 
-// Oblicza norme L2 roznicy dwoch wektorow: ||x_nowe - x_poprzednie||
+// Norma maksimum roznicy dwoch przyblizen: ||x_nowe - x_poprzednie||_inf  (bezwzgledna)
 double normaRoznicy(double rozwiazanie[ROZMIAR], double poprzednie[ROZMIAR])
 {
-    double suma = 0.0;
+    double max_roznica = 0.0;
     for (int i = 0; i < ROZMIAR; i++)
     {
-        double roznica = rozwiazanie[i] - poprzednie[i];
-        suma += roznica * roznica;
+        double roznica = abs(rozwiazanie[i] - poprzednie[i]);
+        if (roznica > max_roznica) max_roznica = roznica;
     }
-    return sqrt(suma);
+    return max_roznica;
 }
 
 // Wypisuje wyniki biezacej iteracji
@@ -66,13 +68,15 @@ void wypiszIteracje(int nrIteracji, double rozwiazanie[ROZMIAR], double estymato
 
 // -------------------------
 // METODA JACOBIEGO
+// x^(k+1) = -D^(-1)(L+U)x^(k) + D^(-1)b
 // -------------------------
 void jacobi()
 {
     cout << "\n========== METODA JACOBIEGO ==========\n";
-    cout << "Kryteria stopu: (1) ||dx|| < " << TOLERANCJA_DX
-         << "  (2) ||r|| < " << TOLERANCJA_R
-         << "  (3) iter > " << MAKS_ITERACJI << "\n\n";
+    cout << "Trzy niezalezne kryteria stopu (musza byc spelnione jednoczesnie):\n";
+    cout << "  (1) bezwzgl. estymator bledu  ||x^(n) - x^(n-1)||_inf < " << TOLERANCJA_DX << "\n";
+    cout << "  (2) bezwzgl. norma residuum   ||b - A*x^(n)||_inf     < " << TOLERANCJA_R << "\n";
+    cout << "  (3) liczba iteracji n <= " << MAKS_ITERACJI << "\n\n";
 
     double rozwiazanie[ROZMIAR], noweRozwiazanie[ROZMIAR];
     for (int i = 0; i < ROZMIAR; i++)
@@ -83,6 +87,7 @@ void jacobi()
     int nrIteracji = 0;
     double estymatorBledu = 1e12;
     double residuum = 1e12;
+
 
     while (nrIteracji < MAKS_ITERACJI)
     {
@@ -127,13 +132,16 @@ void jacobi()
 
 // -------------------------
 // METODA GAUSSA-SEIDELA
+// (L + D)x^(k) = -U*x^(k-1) + b
 // -------------------------
 void gaussSeidel()
 {
+    cout << defaultfloat << setprecision(6);
     cout << "\n========== METODA GAUSSA-SEIDELA ==========\n";
-    cout << "Kryteria stopu: (1) ||dx|| < " << TOLERANCJA_DX
-         << "  (2) ||r|| < " << TOLERANCJA_R
-         << "  (3) iter > " << MAKS_ITERACJI << "\n\n";
+    cout << "Trzy niezalezne kryteria stopu (musza byc spelnione jednoczesnie):\n";
+    cout << "  (1) bezwzgl. estymator bledu  ||x^(n) - x^(n-1)||_inf < " << TOLERANCJA_DX << "\n";
+    cout << "  (2) bezwzgl. norma residuum   ||b - A*x^(n)||_inf     < " << TOLERANCJA_R << "\n";
+    cout << "  (3) liczba iteracji n <= " << MAKS_ITERACJI << "\n\n";
 
     double rozwiazanie[ROZMIAR], poprzednieRozwiazanie[ROZMIAR];
     for (int i = 0; i < ROZMIAR; i++)
@@ -189,12 +197,15 @@ void gaussSeidel()
 // -------------------------
 // METODA SOR (sukcesywna nadrelaksacja)
 // -------------------------
+// (D + omega*L)x^(k+1) = omega*b - [omega*U + (omega - 1)D]x^(k)
 void sor(double parametrOmega)
 {
+    cout << defaultfloat << setprecision(6);
     cout << "\n========== METODA SOR (omega = " << parametrOmega << ") ==========\n";
-    cout << "Kryteria stopu: (1) ||dx|| < " << TOLERANCJA_DX
-         << "  (2) ||r|| < " << TOLERANCJA_R
-         << "  (3) iter > " << MAKS_ITERACJI << "\n\n";
+    cout << "Trzy niezalezne kryteria stopu (musza byc spelnione jednoczesnie):\n";
+    cout << "  (1) bezwzgl. estymator bledu  ||x^(n) - x^(n-1)||_inf < " << TOLERANCJA_DX << "\n";
+    cout << "  (2) bezwzgl. norma residuum   ||b - A*x^(n)||_inf     < " << TOLERANCJA_R << "\n";
+    cout << "  (3) liczba iteracji n <= " << MAKS_ITERACJI << "\n\n";
 
     double rozwiazanie[ROZMIAR], poprzednieRozwiazanie[ROZMIAR];
     for (int i = 0; i < ROZMIAR; i++)
@@ -254,9 +265,10 @@ int main()
     cout << "  Uklad rownan liniowych Ax = b\n";
     cout << "  Rozmiar ukladu: " << ROZMIAR << "x" << ROZMIAR << "\n";
     cout << "  Przyblizenie startowe x0 = [6, 6, 6, 6, 6]\n";
-    cout << "  Uzyto 2 roznych norm docelowych stopowania algorytmu (Makra):\n";
-    cout << "    (1) estymator bledu ||x^(n) - x^(n-1)|| < " << TOLERANCJA_DX << "\n";
-    cout << "    (2) norma residuum  ||b - Ax||          < " << TOLERANCJA_R << "\n";
+    cout << "  Trzy niezalezne kryteria zakonczenia iteracji (laczone AND):\n";
+    cout << "    (1) bezwzgl. estymator bledu  ||x^(n) - x^(n-1)||_inf < " << TOLERANCJA_DX << "\n";
+    cout << "    (2) bezwzgl. norma residuum   ||b - A*x^(n)||_inf     < " << TOLERANCJA_R << "\n";
+    cout << "    (3) liczba iteracji n <= " << MAKS_ITERACJI << "\n";
     cout << "====================================================\n";
 
     jacobi();
