@@ -128,9 +128,9 @@ double strzal(int n, double p, vector<double>& y)
         double ri = wsp_r(xi);
         double si = wsp_s(xi);
 
-        double cD = pi - qi * h * 0.5;          /* przy y_{i-1} */
-        double cG = -2.0 * pi + ri * h * h;     /* przy y_i     */
-        double cP = pi + qi * h * 0.5;          /* przy y_{i+1} */
+        double cD = pi - qi * h * 0.5;          
+        double cG = -2.0 * pi + ri * h * h;     
+        double cP = pi + qi * h * 0.5;          
 
         y[i+1] = (-h * h * si - cD * y[i-1] - cG * y[i]) / cP;
     }

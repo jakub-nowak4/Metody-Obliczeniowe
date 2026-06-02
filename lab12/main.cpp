@@ -2,215 +2,239 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <string>
 #include <vector>
+using namespace std;
 
-const double A = 25.0;
-const int GRID = 1000;
+/* PARAMETRY ZADANIA */
+const double A = 35.0;
+const int LICZBA_PUNKTOW_SIATKI = 1000;
 
-double f(double x)
+double funkcja(double x)
 {
     return x / (1.0 + A * x * x * x * x);
 }
 
-// Ilorazy roznicowe w bazie Newtona, zgodnie ze schematem z wykladu Bieniasza.
-// Po wykonaniu c[k] zawiera f[x_0,...,x_k].
-void divided_diff(const double x[], const double y[], double c[], int n)
+/* ILORAZY ROZNICOWE DO POSTACI NEWTONA */
+void ilorazy_roznicowe(const vector<double>& x, const vector<double>& y, vector<double>& c, int n)
 {
-    for (int i = 0; i <= n; ++i) {
+    int i, k;
+    for (i = 0; i <= n; i++) {
         c[i] = y[i];
     }
 
-    for (int k = 1; k <= n; ++k) {
-        for (int i = n; i >= k; --i) {
+    for (k = 1; k <= n; k++) {
+        for (i = n; i >= k; i--) {
             c[i] = (c[i] - c[i - 1]) / (x[i] - x[i - k]);
         }
     }
 }
 
-// Ewaluacja wielomianu Newtona przez mnozenie zagniezdzone (schemat Hornera).
-double newton_eval(const double x[], const double c[], int n, double t)
+/* WARTOSC WIELOMIANU NEWTONA W PUNKCIE t */
+double wartosc_newtona(const vector<double>& x, const vector<double>& c, int n, double t)
 {
-    double result = c[n];
-    for (int i = n - 1; i >= 0; --i) {
-        result = result * (t - x[i]) + c[i];
+    int i;
+    double wynik = c[n];
+    for (i = n - 1; i >= 0; i--) {
+        wynik = wynik * (t - x[i]) + c[i];
     }
-    return result;
+    return wynik;
 }
 
-// Wezly Czebyszewa: x_k = -cos(pi*(2k-1)/(2n)), k=1,...,n.
-// Sortowanie rosnace jest wygodne i stabilizuje zapis ilorazow roznicowych.
-void cheb_nodes(double* x, int n)
+/* WEZLY CZEBYSZEWA: x_k = -cos(pi*(2k-1)/(2n)), k=1,...,n */
+void wezly_czebyszewa(vector<double>& x, int n)
 {
-    const double pi = std::acos(-1.0);
-    for (int k = 1; k <= n; ++k) {
-        x[k - 1] = -std::cos(pi * (2.0 * k - 1.0) / (2.0 * n));
+    int k;
+    const double pi = acos(-1.0);
+    for (k = 1; k <= n; k++) {
+        x[k - 1] = -cos(pi * (2.0 * k - 1.0) / (2.0 * n));
     }
-    std::sort(x, x + n);
+    sort(x.begin(), x.end());
 }
 
-// Wezly rownoodlegle: n+1 punktow i wielomian stopnia n.
-void uniform_nodes(double* x, int n)
+/* WEZLY ROWNOODLEGLE DLA WIELOMIANU STOPNIA n */
+void wezly_rownoodlegle(vector<double>& x, int n)
 {
-    for (int i = 0; i <= n; ++i) {
+    int i;
+    for (i = 0; i <= n; i++) {
         x[i] = -1.0 + 2.0 * i / n;
     }
 }
 
-double grid_x(int i)
+double punkt_siatki(int i)
 {
-    return -1.0 + 2.0 * i / (GRID - 1);
+    return -1.0 + 2.0 * i / (LICZBA_PUNKTOW_SIATKI - 1);
 }
 
-double write_interpolation_file(const std::string& filename,
-                                const std::vector<double>& nodes,
-                                const std::vector<double>& coeff,
-                                int degree,
-                                double clip_limit)
+/* ZAPIS WYKRESU: x, p(x), f(x); zwraca blad maksymalny */
+double zapisz_interpolacje(const char* nazwa_pliku,
+                           const vector<double>& wezly,
+                           const vector<double>& wsp,
+                           int stopien,
+                           double limit_obciecia)
 {
-    std::ofstream out(filename.c_str());
-    out << std::setprecision(16);
-
-    double max_err = 0.0;
-    for (int i = 0; i < GRID; ++i) {
-        const double x = grid_x(i);
-        const double fx = f(x);
-        const double px = newton_eval(nodes.data(), coeff.data(), degree, x);
-        max_err = std::max(max_err, std::fabs(px - fx));
-
-        double plotted = px;
-        if (std::fabs(plotted) > clip_limit) {
-            plotted = (plotted < 0.0 ? -clip_limit : clip_limit);
-        }
-        out << x << " " << plotted << " " << fx << "\n";
+    int i;
+    FILE* plik = fopen(nazwa_pliku, "w");
+    if (!plik) {
+        perror(nazwa_pliku);
+        exit(1);
     }
 
-    return max_err;
+    double blad_maks = 0.0;
+    for (i = 0; i < LICZBA_PUNKTOW_SIATKI; i++) {
+        double x = punkt_siatki(i);
+        double fx = funkcja(x);
+        double px = wartosc_newtona(wezly, wsp, stopien, x);
+        double blad = fabs(px - fx);
+        if (blad > blad_maks) blad_maks = blad;
+
+        double y_wykres = px;
+        if (fabs(y_wykres) > limit_obciecia) {
+            y_wykres = (y_wykres < 0.0 ? -limit_obciecia : limit_obciecia);
+        }
+        fprintf(plik, "%.15e %.15e %.15e\n", x, y_wykres, fx);
+    }
+
+    fclose(plik);
+    return blad_maks;
 }
 
-void write_function_file(double& max_abs_f)
+void zapisz_funkcje(double& max_abs_f)
 {
-    std::ofstream out("funkcja.dat");
-    out << std::setprecision(16);
+    int i;
+    FILE* plik = fopen("funkcja.dat", "w");
+    if (!plik) {
+        perror("funkcja.dat");
+        exit(1);
+    }
 
     max_abs_f = 0.0;
-    for (int i = 0; i < GRID; ++i) {
-        const double x = grid_x(i);
-        const double fx = f(x);
-        max_abs_f = std::max(max_abs_f, std::fabs(fx));
-        out << x << " " << fx << "\n";
+    for (i = 0; i < LICZBA_PUNKTOW_SIATKI; i++) {
+        double x = punkt_siatki(i);
+        double fx = funkcja(x);
+        if (fabs(fx) > max_abs_f) max_abs_f = fabs(fx);
+        fprintf(plik, "%.15e %.15e\n", x, fx);
     }
+
+    fclose(plik);
 }
 
-void write_plot_scripts()
+void zapisz_skrypty_gnuplota()
 {
-    FILE* gp = std::fopen("plot1.gp", "w");
+    FILE* gp = fopen("plot1.gp", "w");
     if (!gp) {
-        std::perror("plot1.gp");
-        std::exit(1);
+        perror("plot1.gp");
+        exit(1);
     }
-    std::fprintf(gp,
-        "set terminal pngcairo size 1000,700\n"
-        "set output 'wykres1_rownoodlegle.png'\n"
-        "set title \"Zjawisko Rungego -- wezly rownoodlegle, a=25\"\n"
-        "set xlabel \"x\"; set ylabel \"y\"\n"
-        "set yrange [-0.6:0.6]\n"
-        "set key top left\n"
-        "plot 'funkcja.dat'           u 1:2 w l lw 3 lc 'black' title 'f(x)',\\\n"
-        "     'interp_unif_n5.dat'    u 1:2 w l lw 1.5 dt 2 title 'n=5',\\\n"
-        "     'interp_unif_n10.dat'   u 1:2 w l lw 1.5 dt 3 title 'n=10',\\\n"
-        "     'interp_unif_n15.dat'   u 1:2 w l lw 1.5 dt 4 title 'n=15',\\\n"
-        "     'interp_unif_n20.dat'   u 1:2 w l lw 1.5       title 'n=20'\n");
-    std::fclose(gp);
+    fprintf(gp,
+            "set terminal pngcairo size 1000,700\n"
+            "set output 'wykres1_rownoodlegle.png'\n"
+            "set title \"Zjawisko Rungego -- wezly rownoodlegle, a=25\"\n"
+            "set xlabel \"x\"; set ylabel \"y\"\n"
+            "set yrange [-0.6:0.6]\n"
+            "set key top left\n"
+            "plot 'funkcja.dat'           u 1:2 w l lw 3 lc 'black' title 'f(x)',\\\n"
+            "     'interp_unif_n5.dat'    u 1:2 w l lw 1.5 dt 2 title 'n=5',\\\n"
+            "     'interp_unif_n10.dat'   u 1:2 w l lw 1.5 dt 3 title 'n=10',\\\n"
+            "     'interp_unif_n15.dat'   u 1:2 w l lw 1.5 dt 4 title 'n=15',\\\n"
+            "     'interp_unif_n20.dat'   u 1:2 w l lw 1.5       title 'n=20'\n");
+    fclose(gp);
 
-    gp = std::fopen("plot2.gp", "w");
+    gp = fopen("plot2.gp", "w");
     if (!gp) {
-        std::perror("plot2.gp");
-        std::exit(1);
+        perror("plot2.gp");
+        exit(1);
     }
-    std::fprintf(gp,
-        "set terminal pngcairo size 1000,700\n"
-        "set output 'wykres2_czebyszew.png'\n"
-        "set title \"Zjawisko Rungego -- wezly Czebyszewa, a=25\"\n"
-        "set xlabel \"x\"; set ylabel \"y\"\n"
-        "set yrange [-0.6:0.6]\n"
-        "set key top left\n"
-        "plot 'funkcja.dat'           u 1:2 w l lw 3 lc 'black' title 'f(x)',\\\n"
-        "     'interp_cheb_n5.dat'    u 1:2 w l lw 1.5 dt 2 title 'n=5',\\\n"
-        "     'interp_cheb_n10.dat'   u 1:2 w l lw 1.5 dt 3 title 'n=10',\\\n"
-        "     'interp_cheb_n15.dat'   u 1:2 w l lw 1.5 dt 4 title 'n=15',\\\n"
-        "     'interp_cheb_n20.dat'   u 1:2 w l lw 1.5       title 'n=20'\n");
-    std::fclose(gp);
+    fprintf(gp,
+            "set terminal pngcairo size 1000,700\n"
+            "set output 'wykres2_czebyszew.png'\n"
+            "set title \"Zjawisko Rungego -- wezly Czebyszewa, a=25\"\n"
+            "set xlabel \"x\"; set ylabel \"y\"\n"
+            "set yrange [-0.6:0.6]\n"
+            "set key top left\n"
+            "plot 'funkcja.dat'           u 1:2 w l lw 3 lc 'black' title 'f(x)',\\\n"
+            "     'interp_cheb_n5.dat'    u 1:2 w l lw 1.5 dt 2 title 'n=5',\\\n"
+            "     'interp_cheb_n10.dat'   u 1:2 w l lw 1.5 dt 3 title 'n=10',\\\n"
+            "     'interp_cheb_n15.dat'   u 1:2 w l lw 1.5 dt 4 title 'n=15',\\\n"
+            "     'interp_cheb_n20.dat'   u 1:2 w l lw 1.5       title 'n=20'\n");
+    fclose(gp);
 
-    gp = std::fopen("plot3.gp", "w");
+    gp = fopen("plot3.gp", "w");
     if (!gp) {
-        std::perror("plot3.gp");
-        std::exit(1);
+        perror("plot3.gp");
+        exit(1);
     }
-    std::fprintf(gp,
-        "set terminal pngcairo size 1000,700\n"
-        "set output 'wykres3_bledy.png'\n"
-        "set logscale y\n"
-        "set xlabel \"Stopien wielomianu n\"\n"
-        "set ylabel \"max|p(x)-f(x)|\"\n"
-        "set title \"Zbieznosc interpolacji\"\n"
-        "set grid\n"
-        "plot 'bledy.dat' u 1:2 w lp title 'rownoodlegle',\\\n"
-        "     'bledy.dat' u 1:3 w lp title 'Czebyszew'\n");
-    std::fclose(gp);
+    fprintf(gp,
+            "set terminal pngcairo size 1000,700\n"
+            "set output 'wykres3_bledy.png'\n"
+            "set logscale y\n"
+            "set xlabel \"Stopien wielomianu n\"\n"
+            "set ylabel \"max|p(x)-f(x)|\"\n"
+            "set title \"Zbieznosc interpolacji\"\n"
+            "set grid\n"
+            "plot 'bledy.dat' u 1:2 w lp title 'rownoodlegle',\\\n"
+            "     'bledy.dat' u 1:3 w lp title 'Czebyszew'\n");
+    fclose(gp);
 }
 
-double run_case(const std::string& filename, bool chebyshev, int n, double clip_limit)
+double uruchom_przypadek(const char* nazwa_pliku, bool czy_czebyszew, int n, double limit_obciecia)
 {
-    const int node_count = chebyshev ? n : n + 1;
-    const int degree = node_count - 1;
+    int i;
+    int liczba_wezlow = czy_czebyszew ? n : n + 1;
+    int stopien = liczba_wezlow - 1;
 
-    std::vector<double> x(node_count);
-    std::vector<double> y(node_count);
-    std::vector<double> c(node_count);
+    vector<double> x(liczba_wezlow);
+    vector<double> y(liczba_wezlow);
+    vector<double> c(liczba_wezlow);
 
-    if (chebyshev) {
-        cheb_nodes(x.data(), n);
+    if (czy_czebyszew) {
+        wezly_czebyszewa(x, n);
     } else {
-        uniform_nodes(x.data(), n);
+        wezly_rownoodlegle(x, n);
     }
 
-    for (int i = 0; i < node_count; ++i) {
-        y[i] = f(x[i]);
+    for (i = 0; i < liczba_wezlow; i++) {
+        y[i] = funkcja(x[i]);
     }
 
-    divided_diff(x.data(), y.data(), c.data(), degree);
-    return write_interpolation_file(filename, x, c, degree, clip_limit);
+    ilorazy_roznicowe(x, y, c, stopien);
+    return zapisz_interpolacje(nazwa_pliku, x, c, stopien, limit_obciecia);
 }
 
 int main()
 {
-    const int degrees[] = {5, 10, 15, 20};
+    int i;
+    int stopnie[] = {5, 10, 15, 20};
+    const char* pliki_rownoodlegle[] = {
+        "interp_unif_n5.dat", "interp_unif_n10.dat", "interp_unif_n15.dat", "interp_unif_n20.dat"
+    };
+    const char* pliki_czebyszew[] = {
+        "interp_cheb_n5.dat", "interp_cheb_n10.dat", "interp_cheb_n15.dat", "interp_cheb_n20.dat"
+    };
 
     double max_abs_f = 0.0;
-    write_function_file(max_abs_f);
-    const double clip_limit = 5.0 * max_abs_f;
+    zapisz_funkcje(max_abs_f);
+    double limit_obciecia = 5.0 * max_abs_f;
 
-    std::ofstream errors("bledy.dat");
-    errors << std::setprecision(16);
-
-    std::cout << std::scientific << std::setprecision(3);
-    for (int i = 0; i < 4; ++i) {
-        const int n = degrees[i];
-        const double err_unif = run_case("interp_unif_n" + std::to_string(n) + ".dat",
-                                         false, n, clip_limit);
-        const double err_cheb = run_case("interp_cheb_n" + std::to_string(n) + ".dat",
-                                         true, n, clip_limit);
-
-        errors << n << " " << err_unif << " " << err_cheb << "\n";
-        std::cout << "n=" << std::setw(2) << n
-                  << "  rownoodl: max_err = " << err_unif
-                  << "    czebyszew: max_err = " << err_cheb << "\n";
+    FILE* plik_bledow = fopen("bledy.dat", "w");
+    if (!plik_bledow) {
+        perror("bledy.dat");
+        return 1;
     }
 
-    write_plot_scripts();
+    printf("%6s %24s %24s\n", "n", "blad_rownoodlegle", "blad_czebyszew");
+    printf("--------------------------------------------------------------------\n");
+
+    for (i = 0; i < 4; i++) {
+        int n = stopnie[i];
+        double blad_rownoodlegle = uruchom_przypadek(pliki_rownoodlegle[i], false, n, limit_obciecia);
+        double blad_czebyszew = uruchom_przypadek(pliki_czebyszew[i], true, n, limit_obciecia);
+
+        fprintf(plik_bledow, "%d %.15e %.15e\n", n, blad_rownoodlegle, blad_czebyszew);
+        printf("%6d %24.6e %24.6e\n", n, blad_rownoodlegle, blad_czebyszew);
+    }
+
+    fclose(plik_bledow);
+    zapisz_skrypty_gnuplota();
+    printf("\nZapisano pliki .dat i skrypty .gp.\n");
     return 0;
 }

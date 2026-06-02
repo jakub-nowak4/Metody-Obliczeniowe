@@ -68,7 +68,6 @@ void wypiszIteracje(int nrIteracji, double rozwiazanie[ROZMIAR], double estymato
 
 // -------------------------
 // METODA JACOBIEGO
-// x^(k+1) = -D^(-1)(L+U)x^(k) + D^(-1)b
 // -------------------------
 void jacobi()
 {
@@ -132,7 +131,6 @@ void jacobi()
 
 // -------------------------
 // METODA GAUSSA-SEIDELA
-// (L + D)x^(k) = -U*x^(k-1) + b
 // -------------------------
 void gaussSeidel()
 {
@@ -197,7 +195,7 @@ void gaussSeidel()
 // -------------------------
 // METODA SOR (sukcesywna nadrelaksacja)
 // -------------------------
-// (D + omega*L)x^(k+1) = omega*b - [omega*U + (omega - 1)D]x^(k)
+
 void sor(double parametrOmega)
 {
     cout << defaultfloat << setprecision(6);

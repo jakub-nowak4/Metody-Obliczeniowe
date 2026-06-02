@@ -9,7 +9,7 @@ void thomas_dekompozycja(vector<double> &d, const vector<double> &l, const vecto
     eta.resize(N);
     eta[0] = d[0];
     for (int i = 1; i < N; i++)
-        eta[i] = d[i] - (l[i - 1] / eta[i - 1]) * u[i - 1];
+        eta[i] = d[i] - (l[i] / eta[i - 1]) * u[i - 1];
 }
 
 void thomas_rozwiaz(const vector<double> &eta, const vector<double> &l,
@@ -21,7 +21,7 @@ void thomas_rozwiaz(const vector<double> &eta, const vector<double> &l,
 
     r[0] = b[0];
     for (int i = 1; i < N; i++)
-        r[i] = b[i] - (l[i - 1] / eta[i - 1]) * r[i - 1];
+        r[i] = b[i] - (l[i] / eta[i - 1]) * r[i - 1];
 
     x.resize(N);
     x[N - 1] = r[N - 1] / eta[N - 1];
@@ -33,8 +33,8 @@ int main()
 {
 
     vector<double> d = {100, 200, 300, 200, 100};
-    vector<double> l = {2, 4, -6, -8};
-    vector<double> u = {-1, -3, 5, -7};
+    vector<double> l = {0, 2, 4, -6, -8};
+    vector<double> u = {-1, -3, 5, -7,0};
     vector<double> b = {199, 195, 929, 954, 360};
 
     vector<double> eta;

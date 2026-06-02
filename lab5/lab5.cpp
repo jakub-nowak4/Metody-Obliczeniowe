@@ -7,7 +7,7 @@ using namespace std;
 
 const int N = 5;
 // Najmniejsza liczba znormalizowana dla typu double około 2.22 x 10^{-308}
-const double EPSILON = std::numeric_limits<double>::min();
+const double EPSILON = 0;
 
 void dekompozycja_LU(double A[N][N], int wektor_permutacji[N])
 {
@@ -17,7 +17,7 @@ void dekompozycja_LU(double A[N][N], int wektor_permutacji[N])
     for (int kolumna = 0; kolumna < N; kolumna++)
     {
         // Wybór elementu podstawowego tylko gdy wartość na przekątnej jest bliska zeru
-        if (fabs(A[wektor_permutacji[kolumna]][kolumna]) < EPSILON)
+        if (fabs(A[wektor_permutacji[kolumna]][kolumna]) == EPSILON)
         {
             double max_val = fabs(A[wektor_permutacji[kolumna]][kolumna]);
             int wiersz_max = kolumna;
@@ -33,7 +33,7 @@ void dekompozycja_LU(double A[N][N], int wektor_permutacji[N])
                 }
             }
 
-            if (max_val < EPSILON)
+            if (max_val == EPSILON)
             {
                 cout << "Macierz osobliwa lub bliska osobliwej!" << endl;
                 return;
